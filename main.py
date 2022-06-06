@@ -150,7 +150,6 @@ def add_from_year(df, year, no_tracks):
     while offset < no_tracks:
         tracks = sp.search(q='year:' + str(year), limit=50, offset=offset)
         tracks = tracks["tracks"]
-        print(tracks)
         for album in tracks["items"]:
             album_url = album["album"]["id"]
             print(album["name"])
@@ -164,7 +163,7 @@ def add_from_year(df, year, no_tracks):
     df.drop_duplicates()
     return df
 
-start_year = 2002
+start_year = 2003
 end_year = 2005
 print("extracting from ", start_year, "to", end_year)
 for year in range(start_year, end_year):
