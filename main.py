@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import sys
 
-df_new = pd.read_csv('new_data.csv')
+df_new = pd.read_csv('big_dataset.csv')
 client_id = 'a07ad72e5f494ff793681e854bc90415'
 client_secret = '6302d6b270c94cdf8ba4475367b48098'
 
@@ -163,13 +163,18 @@ def add_from_year(df, year, no_tracks):
     df.drop_duplicates()
     return df
 
-start_year = 2003
-end_year = 2005
+
+start_year = 2020
+end_year = 2022
 print("extracting from ", start_year, "to", end_year)
 for year in range(start_year, end_year):
     print("Adding from year", year)
-    name = "new_data_albums_up_to" + str(year)
-    df_new = add_from_year(df_new, year, 1000)
+    name = "new_data_2020_2021" + str(year)
+    if year == 2021:
+        df_new = add_from_year(df_new, year, 500)
+    else:
+        df_new = add_from_year(df_new, year, 1000)
+
     df_new.to_csv(name, index=False)
 
 # for i, playlist in enumerate(playlists):
