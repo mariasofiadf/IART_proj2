@@ -6,10 +6,9 @@ import pandas as pd
 import numpy as np
 import sys
 
-df_new = pd.read_csv('songs_normalize.csv')
-
-client_id = 'e4252125acfa4720beef51ef8799b6cb'
-client_secret = 'cc8cc073f0ff4a869f7dd01939654d90'
+df_new = pd.read_csv('new_data.csv')
+client_id = 'a07ad72e5f494ff793681e854bc90415'
+client_secret = '6302d6b270c94cdf8ba4475367b48098'
 
 sp = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials(client_id=client_id, client_secret=client_secret))
 
@@ -67,6 +66,8 @@ def add_playlist_to_dataset(df,playlist_link):
         popularity = track["track"]["popularity"]
 
         feats = sp.audio_features(track_uri)[0]
+        if feats is None:
+            continue
         duration_ms = feats.get("duration_ms")
         danceability = feats.get("danceability")
         energy = feats.get("energy")
@@ -94,13 +95,90 @@ def add_playlist_to_dataset(df,playlist_link):
     return df
 
 
-for i, playlist in enumerate(playlists):
-    print(i/len(playlists)*100, "%")
-    df_new = add_playlist_to_dataset(df_new, playlist)
+def add_album_to_dataset(df,album_id):
+    tracks = sp.album_tracks(album_id=album_id)["items"]
+    album = sp.album(album_id=album_id)
+    for track in tracks:
+        # URI
+        track_uri = track["uri"]
+        # Track name
+        song = track["name"]
+
+        # Main Artist
+        artist_uri = track["artists"][0]["uri"]
+        artist_info = sp.artist(artist_uri)
+
+        # Name, popularity, genre
+        artist = track["artists"][0]["name"]
+        explicit = track["explicit"]
+        year = album["release_date"][:4]
+        popularity = album["popularity"]
+
+        feats = sp.audio_features(track_uri)[0]
+        if feats is None:
+            continue
+        duration_ms = feats.get("duration_ms")
+        danceability = feats.get("danceability")
+        energy = feats.get("energy")
+        key = feats.get("key")
+        loudness = feats.get("loudness")
+        mode = feats.get("mode")
+        speechiness = feats.get("speechiness")
+        acousticness = feats.get("acousticness")
+        instrumentalness = feats.get("instrumentalness")
+        liveness = feats.get("liveness")
+        valence = feats.get("valence")
+        tempo = feats.get("tempo")
+        if len(artist_info["genres"]) < 1:
+            genre = ""
+        else:
+            genre = artist_info["genres"][0]
+
+        row = [artist,song,duration_ms,explicit,year,popularity,
+               danceability, energy, key, loudness, mode, speechiness,
+               acousticness, instrumentalness, liveness, valence, tempo, genre]
+        df_row = pd.DataFrame([row], columns=df.columns.values)
+
+        df = pd.concat([df, df_row])
+
+    return df
 
 
-df_new.drop_duplicates()
-print("New dataset shape: ", df_new.shape)
-print("Saved to file new_data.csv")
-df_new.to_csv('new_data.csv', index=False)
+def add_from_year(df, year, no_tracks):
+    offset = 0
+    start_size = df.shape[0]
+    while offset < no_tracks:
+        tracks = sp.search(q='year:' + str(year), limit=50, offset=offset)
+        tracks = tracks["tracks"]
+        print(tracks)
+        for album in tracks["items"]:
+            album_url = album["album"]["id"]
+            print(album["name"])
+            df = add_album_to_dataset(df, album_url)
+            count = df.shape[0]-start_size
+            print("count:", count)
+            if count > no_tracks:
+                df.drop_duplicates()
+                return df
+        offset += 50
+    df.drop_duplicates()
+    return df
+
+start_year = 2002
+end_year = 2005
+print("extracting from ", start_year, "to", end_year)
+for year in range(start_year, end_year):
+    print("Adding from year", year)
+    name = "new_data_albums_up_to" + str(year)
+    df_new = add_from_year(df_new, year, 1000)
+    df_new.to_csv(name, index=False)
+
+# for i, playlist in enumerate(playlists):
+#     print(i/len(playlists)*100, "%")
+#     df_new = add_playlist_to_dataset(df_new, playlist)
+
+# df_new.drop_duplicates()
+# print("New dataset shape: ", df_new.shape)
+# print("Saved to file new_data_albums.csv")
+# df_new.to_csv('new_data_playlists.csv', index=False)
 
